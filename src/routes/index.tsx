@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { SIGNALS, type OutbreakSignal } from "@/lib/atlas-data";
+import { type OutbreakSignal } from "@/lib/atlas-data";
 import { TopBar } from "@/components/atlas/TopBar";
 import { GlobalMap } from "@/components/atlas/GlobalMap";
 import { SignalFeed } from "@/components/atlas/SignalFeed";
 import { OutbreakTimeline } from "@/components/atlas/OutbreakTimeline";
 import { ResponseBar } from "@/components/atlas/ResponseBar";
 import { AICopilot } from "@/components/atlas/AICopilot";
+import { useLiveFeed } from "@/hooks/useLiveFeed";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,8 +22,9 @@ export const Route = createFileRoute("/")({
 });
 
 function AtlasDashboard() {
-  const [selectedId, setSelectedId] = useState<string | null>(SIGNALS[0].id);
-  const selected: OutbreakSignal | null = SIGNALS.find((s) => s.id === selectedId) ?? null;
+  const { signals, events } = useLiveFeed();
+  const [selectedId, setSelectedId] = useState<string | null>(signals[0]?.id ?? null);
+  const selected: OutbreakSignal | null = signals.find((s) => s.id === selectedId) ?? signals[0] ?? null;
 
   return (
     <div className="flex h-screen flex-col bg-background bg-grid">
@@ -30,12 +32,12 @@ function AtlasDashboard() {
 
       <main className="flex-1 min-h-0 grid gap-3 p-3 grid-cols-1 lg:grid-cols-[320px_1fr_360px]">
         <div className="min-h-0 hidden lg:block">
-          <SignalFeed selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
+          <SignalFeed signals={signals} events={events} selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
         </div>
 
         <div className="min-h-0 flex flex-col gap-3">
           <div className="flex-1 min-h-0">
-            <GlobalMap selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
+            <GlobalMap signals={signals} selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
           </div>
           <ResponseBar signal={selected} />
         </div>
@@ -44,9 +46,10 @@ function AtlasDashboard() {
           {selected && <OutbreakTimeline signal={selected} />}
         </div>
 
-        {/* Mobile stacks */}
         <div className="lg:hidden min-h-0 grid gap-3">
-          <div className="h-[60vh]"><SignalFeed selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} /></div>
+          <div className="h-[60vh]">
+            <SignalFeed signals={signals} events={events} selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
+          </div>
           {selected && <div className="h-[60vh]"><OutbreakTimeline signal={selected} /></div>}
         </div>
       </main>
