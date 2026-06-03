@@ -1,16 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, X, Brain } from "lucide-react";
 import type { OutbreakSignal } from "@/lib/atlas-data";
-
-type RichSim = {
-  kind: "simulation";
-  signal: string;
-  hours: number;
-  spreadZones: { name: string; intensity: number; eta: number }[];
-  hourly: number[]; // infection load 0..1 per 6h bucket
-  hospital: { tier1: number; tier2: number; icu: number; bedsHit: string };
-  recommendation: string;
-};
+import { simulate, type RichSim } from "@/lib/atlas-sim";
 
 interface Msg { role: "user" | "ai"; text?: string; rich?: RichSim }
 
@@ -21,41 +12,6 @@ const SUGGESTIONS = [
   "Is this real or noise?",
 ];
 
-function simulate(signal: OutbreakSignal | null, hours = 72): RichSim {
-  const base = signal?.severity ?? 0.5;
-  const vel = signal?.velocity ?? 1.5;
-  const buckets = Math.floor(hours / 6);
-  const hourly = Array.from({ length: buckets }, (_, i) => {
-    const t = i / buckets;
-    return Math.min(1, base * Math.pow(vel, t * 2) * (0.6 + 0.4 * Math.sin(t * Math.PI)));
-  });
-  const peak = Math.max(...hourly);
-  const zones = signal
-    ? [
-        { name: `${signal.country} · ${signal.region}`, intensity: peak, eta: 0 },
-        { name: "Secondary cluster (200km radius)", intensity: peak * 0.72, eta: 18 },
-        { name: "Tertiary spread (regional hub)",    intensity: peak * 0.48, eta: 42 },
-        { name: "Long-haul migration node",           intensity: peak * 0.31, eta: 66 },
-      ]
-    : [
-        { name: "Global baseline", intensity: 0.2, eta: 0 },
-      ];
-  const tier1 = Math.floor(40 + peak * 50);
-  const tier2 = Math.floor(25 + peak * 40);
-  const icu   = Math.floor(15 + peak * 65);
-  return {
-    kind: "simulation",
-    signal: signal?.name ?? "Global surface",
-    hours,
-    spreadZones: zones,
-    hourly,
-    hospital: { tier1, tier2, icu, bedsHit: icu > 70 ? `T+${36}h` : `T+${54}h` },
-    recommendation:
-      icu > 70
-        ? "Deploy mobile diagnostics within 6h; pre-position ICU surge capacity; advisory to regional authority."
-        : "Monitor closely; activate tier-1 hospital alerts; queue supply routing for T+24h decision point.",
-  };
-}
 
 function textReply(q: string, signal: OutbreakSignal | null): string {
   const ctx = signal ? `${signal.name} (${signal.country})` : "global surface";

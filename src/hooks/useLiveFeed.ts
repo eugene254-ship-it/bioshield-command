@@ -3,7 +3,7 @@ import { SIGNALS, type OutbreakSignal, type RiskLevel, type SignalType } from "@
 
 export interface LiveEvent {
   id: string;
-  kind: "new" | "escalation" | "verified";
+  kind: "new" | "escalation" | "verified" | "manual";
   signalId: string;
   text: string;
   at: number;
@@ -26,6 +26,21 @@ function buildTimeline(base: number): OutbreakSignal["timeline"] {
   ];
 }
 
+export interface ManualIncident {
+  name: string;
+  region: string;
+  country: string;
+  lon: number;
+  lat: number;
+  type: SignalType;
+  level: RiskLevel;
+  severity: number;
+  velocity: number;
+  confidence: number;
+  sources: string[];
+  description: string;
+}
+
 export function useLiveFeed() {
   const [signals, setSignals] = useState<OutbreakSignal[]>(() => SIGNALS.map((s) => ({ ...s })));
   const [events, setEvents] = useState<LiveEvent[]>([]);
@@ -38,21 +53,33 @@ export function useLiveFeed() {
     setEvents((prev) => [ev, ...prev].slice(0, 8));
   }, []);
 
+  const addSignal = useCallback((m: ManualIncident): OutbreakSignal => {
+    const newSig: OutbreakSignal = {
+      ...m,
+      id: `sig-${++seq}`,
+      detectedAgo: "just now",
+      timeline: [
+        { hour: 0, stage: "detected", label: "Manual intake", detail: `Operator-submitted · ${m.sources.length} source(s)` },
+        { hour: 6, stage: "verifying", label: "Verification queue", detail: "Cross-source corroboration in progress" },
+      ],
+    };
+    setSignals((prev) => [newSig, ...prev]);
+    pushEvent({ kind: "manual", signalId: newSig.id, text: `Manual incident filed: ${newSig.name}` });
+    return newSig;
+  }, [pushEvent]);
+
   useEffect(() => {
-    // Simulated WebSocket — replace .start() with real socket when backend exists
     const interval = setInterval(() => {
       tickRef.current += 1;
       setLastTick(Date.now());
 
       setSignals((prev) => {
         let next = prev.map((s) => {
-          // jitter velocity ±10%
           const vel = Math.max(0.5, +(s.velocity + (Math.random() - 0.5) * 0.15).toFixed(2));
           const conf = Math.min(0.99, Math.max(0.3, +(s.confidence + (Math.random() - 0.5) * 0.04).toFixed(2)));
           return { ...s, velocity: vel, confidence: conf };
         });
 
-        // every ~4 ticks, escalate a non-critical signal
         if (tickRef.current % 4 === 0) {
           const i = Math.floor(Math.random() * next.length);
           const s = next[i];
@@ -63,8 +90,7 @@ export function useLiveFeed() {
           }
         }
 
-        // every ~6 ticks, inject a brand new signal from the pool
-        if (tickRef.current % 6 === 0 && next.length < SIGNALS.length + POTENTIAL_NEW.length) {
+        if (tickRef.current % 6 === 0 && next.length < SIGNALS.length + POTENTIAL_NEW.length + 12) {
           const pool = POTENTIAL_NEW.filter((p) => !next.some((s) => s.name === p.name));
           if (pool.length) {
             const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -89,10 +115,9 @@ export function useLiveFeed() {
     };
   }, [pushEvent]);
 
-  return { signals, events, connected, lastTick };
+  return { signals, events, connected, lastTick, addSignal };
 }
 
-// Deterministic SHA-like hash for audit trails (display only)
 export function auditHash(seed: string): string {
   let h1 = 0x811c9dc5, h2 = 0xdeadbeef;
   for (let i = 0; i < seed.length; i++) {

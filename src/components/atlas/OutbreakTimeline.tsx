@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { RISK_META, type OutbreakSignal } from "@/lib/atlas-data";
-import { ShieldCheck, FlaskConical, Radio, Siren, Lock, Play, Pause, RotateCcw, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { ShieldCheck, FlaskConical, Radio, Siren, Lock, Play, Pause, RotateCcw, ChevronDown, ChevronRight, Copy, Check, FileDown } from "lucide-react";
 import { auditHash, sourceDetail } from "@/hooks/useLiveFeed";
+import { exportSignalReport } from "@/lib/atlas-report";
+
 
 const STAGE_META = {
   detected:    { label: "Detected",    icon: Radio,        color: "var(--risk-high)" },
@@ -49,10 +51,19 @@ export function OutbreakTimeline({ signal }: Props) {
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Outbreak Timeline</div>
-          <span className="rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider"
-                style={{ background: `${meta.color}22`, color: meta.color }}>
-            {STAGE_META[currentStage].label}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => exportSignalReport(signal)}
+              className="flex items-center gap-1 rounded border border-primary/50 bg-primary/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-primary hover:bg-primary/20"
+              title="Export PDF report (timeline + 72h simulation)"
+            >
+              <FileDown className="h-3 w-3" /> PDF
+            </button>
+            <span className="rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider"
+                  style={{ background: `${meta.color}22`, color: meta.color }}>
+              {STAGE_META[currentStage].label}
+            </span>
+          </div>
         </div>
         <div className="mt-1 text-sm font-medium">{signal.name}</div>
         <div className="text-[11px] text-muted-foreground">{signal.country} · ID {signal.id.toUpperCase()}</div>
