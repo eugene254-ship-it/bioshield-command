@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Truck, Hospital, Boxes, Bell, Syringe } from "lucide-react";
 import type { OutbreakSignal } from "@/lib/atlas-data";
+import { ScenarioCompare } from "@/components/atlas/ScenarioCompare";
 
 const ACTIONS = [
   { id: "diag",   icon: Truck,    label: "Deploy Diagnostics", sub: "Mobile units" },
@@ -23,6 +24,7 @@ export function ResponseBar({ signal }: { signal: OutbreakSignal | null }) {
         </div>
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider">
           <span className="rounded border border-border bg-card/60 px-2 py-1 text-muted-foreground">DigitalTwin: <span className="text-foreground">Off</span></span>
+          <ScenarioCompare signal={signal} />
           <button className="rounded border border-primary/60 bg-primary/15 px-2 py-1 text-primary hover:bg-primary/25">
             Switch to Simulation
           </button>
